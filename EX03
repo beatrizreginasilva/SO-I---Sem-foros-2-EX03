@@ -1,0 +1,84 @@
+package SOI11;
+
+import java.util.Random;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+public class SOI11 {
+
+    private static final Object lockSaque = new Object(); 
+    private static final Object lockDeposito = new Object(); 
+
+    static class Conta {
+        private String codigo;
+        private double saldo;
+
+        public Conta(String codigo, double saldo) {
+            this.codigo = codigo;
+            this.saldo = saldo;
+        }
+
+        public String getCodigo() {
+            return codigo;
+        }
+
+        public double getSaldo() {
+            return saldo;
+        }
+
+        public void saque(double valor) {
+            synchronized (lockSaque) {
+                if (saldo >= valor) {
+                    saldo -= valor;
+                    System.out.println("Saque de " + valor + " realizado na conta " + codigo + ". Saldo atual: " + saldo);
+                } else {
+                    System.out.println("Saldo insuficiente para saque de " + valor + " na conta " + codigo);
+                }
+            }
+        }
+
+        public void deposito(double valor) {
+            synchronized (lockDeposito) {
+                saldo += valor;
+                System.out.println("Depósito de " + valor + " realizado na conta " + codigo + ". Saldo atual: " + saldo);
+            }
+        }
+    }
+
+    static class Transacao extends Thread {
+        private Conta conta;
+        private boolean isSaque;
+        private double valor;
+
+        public Transacao(Conta conta, boolean isSaque, double valor) {
+            this.conta = conta;
+            this.isSaque = isSaque;
+            this.valor = valor;
+        }
+
+        @Override
+        public void run() {
+            if (isSaque) {
+                conta.saque(valor);
+            } else {
+                conta.deposito(valor);
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+        Conta conta = new Conta("12345", 10000.0); 
+        Random random = new Random();
+        ExecutorService executor = Executors.newFixedThreadPool(20);
+
+        for (int i = 0; i < 20; i++) {
+            boolean isSaque = random.nextBoolean(); 
+            double valorTransacao = 100 + (random.nextDouble() * 900); 
+
+            Transacao transacao = new Transacao(conta, isSaque, valorTransacao);
+            executor.execute(transacao);
+        }
+
+        executor.shutdown();
+    }
+}
